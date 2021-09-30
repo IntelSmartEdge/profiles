@@ -1,0 +1,8 @@
+# SPDX-License-Identifier: Apache-2.0
+# Copyright (C) 2019-2021 Intel Corporation
+
+build:
+  - container: alpine:3.13
+    entrypoint: ""
+    cmd: sh -c
+    execute: generate_certs.sh

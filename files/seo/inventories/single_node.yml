@@ -1,0 +1,26 @@
+# SPDX-License-Identifier: Apache-2.0
+# Copyright (C) 2021 Intel Corporation
+
+all:
+  vars:
+    cluster_name: seo_dek
+    flavor: $flavor
+    deployment: $flavor
+    single_node_deployment: true
+    limit:
+controller_group:
+  hosts:
+    controller:
+      ansible_host: $IP
+      ansible_user: $param_username
+edgenode_group:
+  hosts:
+    node01:
+      ansible_host: $IP
+      ansible_user: $param_username
+edgenode_vca_group:
+  hosts:
+ptp_master:
+  hosts:
+ptp_slave_group:
+  hosts:

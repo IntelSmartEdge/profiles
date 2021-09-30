@@ -1,0 +1,13 @@
+# SPDX-License-Identifier: Apache-2.0
+# Copyright (C) 2019-2021 Intel Corporation
+
+127.0.0.1 localhost @@HOSTNAME@@
+127.0.1.1 @@HOSTNAME@@
+
+# The following lines are desirable for IPv6 capable hosts
+::1     ip6-localhost ip6-loopback @@HOSTNAME@@
+fe00::0 ip6-localnet
+ff00::0 ip6-mcastprefix
+ff02::1 ip6-allnodes
+ff02::2 ip6-allrouters
+ff02::3 ip6-allhosts

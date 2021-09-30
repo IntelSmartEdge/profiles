@@ -1,0 +1,22 @@
+# SPDX-License-Identifier: Apache-2.0
+# Copyright (C) 2021 Intel Corporation
+
+[Unit]
+Description=Service running Smart Edge Open installer (Experience Kit)
+After=network-online.target
+Wants=network-online.target
+
+[Service]
+User=root
+Restart=no
+WorkingDirectory=$ek_path
+Environment=PATH=/root/.local/bin:/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/sbin:/bin
+Environment=HTTP_PROXY=$http_proxy
+Environment=HTTPS_PROXY=$http_proxy
+Environment=http_proxy=$http_proxy
+Environment=https_proxy=$http_proxy
+Environment=NO_PROXY=localhost,127.0.0.1
+ExecStart=/bin/bash /usr/bin/seo_deploy.sh
+
+[Install]
+WantedBy=multi-user.target

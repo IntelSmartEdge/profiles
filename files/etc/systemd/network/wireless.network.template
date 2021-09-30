@@ -1,0 +1,10 @@
+# SPDX-License-Identifier: Apache-2.0
+# Copyright (C) 2019-2021 Intel Corporation
+
+[Match]
+Name=en*
+SSID=@@WPA_SSID@@
+
+[Network]
+DHCP=yes
+

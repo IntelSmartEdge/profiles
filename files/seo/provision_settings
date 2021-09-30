@@ -1,0 +1,46 @@
+# SPDX-License-Identifier: Apache-2.0
+# Copyright (C) 2021 Intel Corporation
+
+# Repository address
+# Format must be: `github.com/org/repo` - no https://
+# It'll be concated with protocol and token
+export url=github.com/smart-edge-open/open-developer-experience-kits
+
+# Github token
+export gh_token=
+
+# Branch to checkout on cloning
+export branch=main
+
+# Experience Kit flavor
+export flavor=dek
+
+# either `single-node` or `multi-node`
+export scenario=single-node
+
+# MAC address of Controller's primary interface
+# Used in deployment of multi node cluster
+# If empty, it is assumed that machine is a Controller
+export controller_mac=
+
+# Path where Experience Kits will be cloned to
+export ek_path=/opt/seo
+
+# Files sideloading configuration
+# DO NOT DELETE: `declare -A files`
+# `files` is an associative array
+# - key is name of the file in the files/seo/sideload/ directory
+# - value is destination path on the provisioned machine
+# Examples:
+# - Absolute dir path
+#   files["syscfg_package.zip"]="/opt/seo/biosfw/"
+# - Absolute dir path
+#   files["syscfg_package.zip"]="/opt/seo/biosfw/syscfg_package.zip"
+# - Relative dir path
+#   files["syscfg_package.zip"]="biosfw/"
+# - Relative file path
+#   files["syscfg_package.zip"]="biosfw/syscfg_package.zip"
+
+declare -A files
+
+#files["syscfg_package.zip"]="biosfw/syscfg_package.zip"

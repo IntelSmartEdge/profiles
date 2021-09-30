@@ -1,0 +1,8 @@
+# SPDX-License-Identifier: Apache-2.0
+# Copyright (C) 2019-2021 Intel Corporation
+
+[Match]
+Name=bond0
+
+[Network]
+Bridge=br0

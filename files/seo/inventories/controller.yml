@@ -1,0 +1,23 @@
+# SPDX-License-Identifier: Apache-2.0
+# Copyright (C) 2021 Intel Corporation
+
+all:
+  vars:
+    cluster_name: smart_edge_open_multi_node
+    flavor: $flavor
+    deployment: $flavor
+    single_node_deployment: false
+    limit: controller_group
+controller_group:
+  hosts:
+    controller:
+      ansible_host: $IP
+      ansible_user: root
+edgenode_group:
+  hosts:
+edgenode_vca_group:
+  hosts:
+ptp_master:
+  hosts:
+ptp_slave_group:
+  hosts:
