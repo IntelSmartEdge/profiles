@@ -12,7 +12,7 @@ controller_group:
   hosts:
     controller:
       ansible_host: $IP
-      ansible_user: root
+      ansible_user: $param_username
 edgenode_group:
   hosts:
 edgenode_vca_group:

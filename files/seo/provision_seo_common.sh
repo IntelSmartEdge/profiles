@@ -10,17 +10,8 @@ set -x
 param_token=${param_token}
 # shellcheck disable=SC2269 # variable origin: pre.sh
 param_bootstrapurl=${param_bootstrapurl}
-
-# (re)load settings - bash's associative arrays cannot be exported
-# shellcheck source=./files/seo/provision_settings
-source <(wget --header "Authorization: token ${param_token}" -O- "${param_bootstrapurl}/files/seo/provision_settings")
-
-# shellcheck disable=SC2269 # variable origin: provision_settings
-ek_path=${ek_path}
-# shellcheck disable=SC2269 # variable origin: provision_settings
-branch=${branch}
-# shellcheck disable=SC2269 # pvariable origin: rovision_settings
-url=${url}
+# shellcheck disable=SC2269 # variable origin: pre.sh
+param_bare_os=${param_bare_os}
 
 # Generate SSH key
 ssh-keygen -t rsa -q -f "$HOME/.ssh/id_rsa" -N "" <<< y
@@ -31,6 +22,21 @@ cat "$HOME/.ssh/id_rsa.pub" >> "$HOME/.ssh/authorized_keys"
 python3 -m pip install pipenv
 echo "export PATH=${HOME}/.local/bin:$PATH" >> ~/.bashrc
 export PATH=${HOME}/.local/bin:$PATH
+
+# Skip installing Experience Kit
+if [ "${param_bare_os}" == "true" ]; then
+    exit 0
+fi
+
+# (re)load settings - bash's associative arrays cannot be exported
+# shellcheck source=./files/seo/provision_settings
+source <(wget --header "Authorization: token ${param_token}" -O- "${param_bootstrapurl}/files/seo/provision_settings")
+# shellcheck disable=SC2269 # variable origin: provision_settings
+ek_path=${ek_path}
+# shellcheck disable=SC2269 # variable origin: provision_settings
+branch=${branch}
+# shellcheck disable=SC2269 # variable origin: provision_settings
+url=${url}
 
 # Systemd service
 wget --header "Authorization: token ${param_token}" -O /tmp/seo_deploy.sh.tpl "${param_bootstrapurl}/files/seo/systemd/seo_deploy.sh"
@@ -51,7 +57,6 @@ if [ -n "${gh_token}" ]; then
     git config --global --remove-section url."https://${gh_token}@github.com"
 fi
 cd "${ek_path}"
-
 
 # shellcheck disable=SC2154
 for remote_filename in "${!files[@]}"; do

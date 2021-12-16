@@ -9,3 +9,5 @@ DHCP=yes
 
 [DHCP]
 CriticalConnection=true
+SendHostname=false
+ClientIdentifier=mac

@@ -50,6 +50,11 @@ For more information regarding conventions and limitations please refer to [inte
 
 1. uOS starts, fetches and executes `bootstrap.sh`.
    1. `bootstrap.sh` executes `pre.sh`, `profile.sh`, and `post.sh`
+      1. `pre.sh` will execute `create_seo_partitions.sh`
+         - Specify a device/disk (eg /dev/sda)
+         - Checks if a device/disk (if specified) is above the threshold (currently set to 500 GB)
+         - If it is below the threshold, creating LVM snapshots will not be available and the whole device/disk will be partitioned
+         - If it is above the threshold, half of the total capacity of the device/disk (specified or not) will be used for LVM snapshots
    1. `profile.sh` executes two files in order to provision the EK: 
       1. `provision_seo_common.sh`
          - SSH key generation
@@ -60,6 +65,7 @@ For more information regarding conventions and limitations please refer to [inte
       2. `provision_seo_sn.sh` or `provision_seo_mn.sh`
          - Proper inventory file is downloaded
          - SSH certs are created (for multinode)
+   1. `post.sh` enables secure boot (if enabled by user) and reboots system
 1. System reboots into provisioned OS (Ubuntu).
 1. `seo` service starts on boot and runs Experience Kit.<br>
 1. To check the status of the deployment:
@@ -117,7 +123,9 @@ To side-load a file (e.g. `syscfg_package.zip` for BIOSFW):
 │           ├── seo_deploy.sh
 │           └── seo.service
 ├── post.sh
+├── redfish.py
 ├── pre.sh
+├── create_seo_partitions.sh
 ├── profile.sh
 └── README.md
 ```

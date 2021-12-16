@@ -3,9 +3,47 @@
 # SPDX-License-Identifier: Apache-2.0
 # Copyright (C) 2019-2021 Intel Corporation
 
+set -o pipefail
+
 # this is provided while using uOS
 # shellcheck source=/dev/null
 source /opt/bootstrap/functions
+PROVISIONER=$1
+
+# shellcheck disable=SC2269 # variable origin: pre.sh
+param_bootstrapurl=${param_bootstrapurl}
+# shellcheck disable=SC2269 # variable origin: pre.sh
+param_token=${param_token}
+# shellcheck source=./files/seo/provision_settings
+source <(wget --header "Authorization: token ${param_token}" -O- "${param_bootstrapurl}/files/seo/provision_settings")
+# shellcheck disable=SC2269 # variable origin: provision_settings
+enable_secure_boot=${enable_secure_boot}
+# shellcheck disable=SC2269 # variable origin: provision_settings
+enable_tpm=${enable_tpm}
+# shellcheck disable=SC2269 # variable origin: provision_settings
+redfish_ip=${redfish_ip}
+# shellcheck disable=SC2269 # variable origin: provision_settings
+redfish_user=${redfish_user}
+# shellcheck disable=SC2269 # variable origin: provision_settings
+redfish_password=${redfish_password}
+# shellcheck disable=SC2269 # variable origin: pre.sh
+param_parttype=${param_parttype}
+# A proxy that has access to out of band management interface
+management_proxy="http://${PROVISIONER}:3128/"
+
+if [[ "${enable_secure_boot}" == "true" ]] && [[ $param_parttype == "efi" ]]; then
+    run "Enabling secure boot" \
+    "wget --header \"Authorization: token ${param_token}\" -O - \"${param_bootstrapurl}/redfish.py\" \
+    | python3 - sb on --ip \"${redfish_ip}\" -u \"${redfish_user}\" -p \"${redfish_password}\" --proxy \"${management_proxy}\"" \
+    "${PROVISION_LOG}"
+fi
+
+if [[ "${enable_tpm}" == "true" ]]; then
+    run "Enabling trusted module platform" \
+    "wget --header \"Authorization: token ${param_token}\" -O - \"${param_bootstrapurl}/redfish.py\" \
+    | python3 - tpm on --ip \"${redfish_ip}\" -u \"${redfish_user}\" -p \"${redfish_password}\" --proxy \"${management_proxy}\"" \
+    "${PROVISION_LOG}"
+fi
 
 stop=$(date +%s)
 # shellcheck disable=SC2154 # $start defined in pre.sh

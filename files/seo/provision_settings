@@ -23,6 +23,15 @@ export scenario=single-node
 # If empty, it is assumed that machine is a Controller
 export controller_mac=
 
+# Switch for enabling secure boot in bios
+# Affects uefi boot only
+export enable_secure_boot=
+# Switch for enabling trusted module platform
+export enable_tpm=
+export redfish_ip=
+export redfish_user=
+export redfish_password=
+
 # Path where Experience Kits will be cloned to
 export ek_path=/opt/seo
 
