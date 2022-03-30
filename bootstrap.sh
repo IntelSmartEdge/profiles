@@ -25,7 +25,6 @@ if [[ $kernel_params == *"bootstrap="* ]]; then
     export param_bootstrapurl=${param_bootstrap//$(basename "$param_bootstrap")/}
 fi
 
-# --- Call pre.sh from base_profile ---
 # shellcheck source=pre.sh
 source <(wget --header "Authorization: token ${param_token}" -O - "${param_bootstrapurl}/pre.sh") && \
 wget --header "Authorization: token ${param_token}" -O - "${param_bootstrapurl}/profile.sh" | bash -s - "$param_httpserver" && \

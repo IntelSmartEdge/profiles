@@ -1,55 +1,33 @@
 # SPDX-License-Identifier: Apache-2.0
 # Copyright (C) 2021 Intel Corporation
 
-# Repository address
-# Format must be: `github.com/org/repo` - no https://
-# It'll be concated with protocol and token
-export url=github.com/smart-edge-open/open-developer-experience-kits
+# Experience Kit repository address
+# Format must be: `github.com/org/repo.git`, with no leading http/https, and without github token
+export url=
 
-# Github token
+# Github token to access above repo
 export gh_token=
 
-# Branch to checkout on cloning
-export branch=main
+# Branch to checkout of above repo
+export branch=
 
-# Experience Kit flavor
-export flavor=dek
+# Experience Kit deployment type
+export deployment=
 
-# either `single-node` or `multi-node`
-export scenario=single-node
+# Experience Kit deployment's scenario
+export scenario=
 
-# MAC address of Controller's primary interface
-# Used in deployment of multi node cluster
-# If empty, it is assumed that machine is a Controller
+# MAC address of controller's primary interface
 export controller_mac=
 
-# Switch for enabling secure boot in bios
-# Affects uefi boot only
+# Path where Experience Kit will be cloned to
+export ek_path=
+
+# Switch for enabling secure boot in bios (affects uefi boot only)
 export enable_secure_boot=
 # Switch for enabling trusted module platform
 export enable_tpm=
+# MGMT IP and credentials, required by above options
 export redfish_ip=
 export redfish_user=
 export redfish_password=
-
-# Path where Experience Kits will be cloned to
-export ek_path=/opt/seo
-
-# Files sideloading configuration
-# DO NOT DELETE: `declare -A files`
-# `files` is an associative array
-# - key is name of the file in the files/seo/sideload/ directory
-# - value is destination path on the provisioned machine
-# Examples:
-# - Absolute dir path
-#   files["syscfg_package.zip"]="/opt/seo/biosfw/"
-# - Absolute dir path
-#   files["syscfg_package.zip"]="/opt/seo/biosfw/syscfg_package.zip"
-# - Relative dir path
-#   files["syscfg_package.zip"]="biosfw/"
-# - Relative file path
-#   files["syscfg_package.zip"]="biosfw/syscfg_package.zip"
-
-declare -A files
-
-#files["syscfg_package.zip"]="biosfw/syscfg_package.zip"

@@ -4,8 +4,7 @@
 all:
   vars:
     cluster_name: smart_edge_open_multi_node
-    flavor: $flavor
-    deployment: $flavor
+    deployment: $deployment
     single_node_deployment: false
     limit: controller_group
 controller_group:
@@ -15,9 +14,5 @@ controller_group:
       ansible_user: $param_username
 edgenode_group:
   hosts:
-edgenode_vca_group:
-  hosts:
-ptp_master:
-  hosts:
-ptp_slave_group:
-  hosts:
+##extra_inventory_groups_begin##
+##extra_inventory_groups_end##

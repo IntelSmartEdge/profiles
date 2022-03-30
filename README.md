@@ -3,9 +3,9 @@ SPDX-License-Identifier: Apache-2.0
 Copyright (c) 2019-2021 Intel Corporation
 ```
 
-# ESP profile for SE-O Demo Experience Kits
+# ESP profile for SE-O Developer Experience Kits
 
-This directory contains profile for the Edge Software Provisioner required to provision a Demo Experience Kits on the Ubuntu 20.04 LTS.
+This directory contains profile for the Edge Software Provisioner required to provision a Developer Experience Kits on the Ubuntu 20.04 LTS.
 
 This profile is based on [intel/rni-profile-base-ubuntu](https://github.com/intel/rni-profile-base-ubuntu)'s `slim` and `master` branches.
 For more information regarding conventions and limitations please refer to [intel/rni-profile-base-ubuntu](https://github.com/intel/rni-profile-base-ubuntu)'s READMEs (both `master` and `slim` branch).

@@ -10,10 +10,14 @@ import sys
 import time
 import warnings
 import argparse
-import requests  # pylint: disable=import-error
+import requests
 
 
 warnings.filterwarnings("ignore")
+
+
+class NoTpmModuleException(KeyError):
+    "To be raised in case user performs tpm operation on system that does not have tpm module."
 
 
 def join_url(*pieces):
@@ -34,8 +38,9 @@ class RedfishAPI:
         self.proxy = proxy
         self.verbose = verbose
         self._system_id = None
+        self._pending_bios_attrs = {}
 
-    def _request(self, method: str, endpoint: str, check=True, **kwargs):
+    def _request(self, method: str, endpoint: str, check=True, timeout=HTTP_RESPONSE_TIMEOUT, **kwargs):
         """Generic http request.
 
         Note:
@@ -74,13 +79,14 @@ class RedfishAPI:
                                              verify=False,  # nosec
                                              auth=(self.username, self.password),
                                              proxies=self.proxy,
-                                             timeout=self.HTTP_RESPONSE_TIMEOUT,
+                                             timeout=timeout,
                                              **kwargs)
         if check:
             check_response(response)
 
         if self.verbose:
             print_extended_info(response)
+
         return response
 
     @property
@@ -104,6 +110,16 @@ class RedfishAPI:
     @property
     def is_dell(self) -> bool:
         return self.system_id == "System.Embedded.1"
+
+    def check_connectivity(self):
+        """Checks if base url https://address/redfish/v1 is accesible
+        for further redfish operations.
+        """
+        try:
+            self._request("get", "", check=False, timeout=1)
+        except requests.exceptions.RequestException:
+            return False
+        return True
 
     def patch_secure_boot(self, payload_data):
         """Sends PATCH rest request to system /SecureBoot endpoint.
@@ -142,23 +158,29 @@ class RedfishAPI:
         """Enables secure boot for given system.
 
         Note:
-            Based on system_id different json payload is provided to system.
+            For changes to be to applied for dell finalize_bios_settings should be called.
         """
         # supermicro has different payload
-        payload = {"SecureBoot": "Enabled"} if self.is_supermicro else {"SecureBootEnable": True}
-        response = self.patch_secure_boot(payload)
-        print(f"- PASS, Secure boot command successful, code return is {response.status_code}")
+        if self.is_supermicro:
+            payload = {"SecureBoot": "Enabled"}
+            response = self.patch_secure_boot(payload)
+            print(f"- PASS, Secure boot command successful, code return is {response.status_code}")
+        else:
+            self._pending_bios_attrs["SecureBoot"] = "Enabled"
 
     def disable_secure_boot(self):
         """Disables secure boot for given system.
 
         Note:
-            Based on system_id different json payload is provided to system.
+            For changes to be to applied for dell finalize_bios_settings should be called.
         """
         # supermicro has different payload
-        payload = {"SecureBoot": "Disabled"} if self.is_supermicro else {"SecureBootEnable": False}
-        response = self.patch_secure_boot(payload)
-        print(f"- PASS, Secure boot command successful, code return is {response.status_code}")
+        if self.is_supermicro:
+            payload = {"SecureBoot": "Disabled"}
+            response = self.patch_secure_boot(payload)
+            print(f"- PASS, Secure boot command successful, code return is {response.status_code}")
+        else:
+            self._pending_bios_attrs["SecureBoot"] = "Disabled"
 
     def get_secure_boot_enable_status(self) -> bool:
         """Returns bool value representing state of secure boot.
@@ -185,31 +207,22 @@ class RedfishAPI:
 
     def enable_tpm(self):
         """Enables trusted platform module support for given system.
+        Note: For changes to be applied finalize_bios_settings should be called.
         """
         # TODO: Check what is payload/endpoint for supermicro
         if self.is_supermicro:
             raise NotImplementedError("Not yet implemented for supermicro.")
-
-        payload = {"Attributes": {"TpmSecurity": "On"}}
-        response = self.patch_bios_settings(payload)
-        print(f"- PASS, Bios patch command successful, code return is {response.status_code}")
-        # Changes in dell bios setting reqire creation of config job for them to take effect
-        if self.is_dell:
-            self.create_bios_config_job()
+        self._pending_bios_attrs["TpmSecurity"] = "On"
 
     def disable_tpm(self):
         """Disables trusted platform module support for given system.
+        Note: For changes to be applied finalize_bios_settings should be called.
         """
         # TODO: Check what is payload/endpoint for supermicro
         if self.is_supermicro:
             raise NotImplementedError("Not yet implemented for supermicro.")
 
-        payload = {"Attributes": {"TpmSecurity": "Off"}}
-        response = self.patch_bios_settings(payload)
-        print(f"- PASS, Bios patch command successful, code return is {response.status_code}")
-        # Changes in dell bios setting reqire creation of config job for them to take effect
-        if self.is_dell:
-            self.create_bios_config_job()
+        self._pending_bios_attrs["TpmSecurity"] = "Off"
 
     def get_tpm(self) -> bool:
         """Returns bool value representing status of system trusted platform module support.
@@ -224,7 +237,24 @@ class RedfishAPI:
 
         response = self._request("get", f"/Systems/{self.system_id}/Bios")
         data = response.json()
+        if "TpmSecurity" not in data["Attributes"]:
+            raise NoTpmModuleException("No 'TpmSecurity' found in system bios attributes. "
+                                       "Please ensure tpm module installed on the system.")
+
         return data["Attributes"]["TpmSecurity"] == "On"
+
+    def finalize_bios_settings(self):
+        """Finalizes setting pending bios configuration by patching /Bios/Setting
+        endpoint and creating bios_config_job.
+        """
+        if self.is_supermicro:
+            raise NotImplementedError("Not yet implemented for supermicro.")
+        if not self._pending_bios_attrs:
+            return
+        response = self.patch_bios_settings({"Attributes": self._pending_bios_attrs})
+        print(f"- PASS, Bios patch command successful, code return is {response.status_code}")
+        # Changes in dell bios settings require creation of config job for them to take effect
+        self.create_bios_config_job()
 
     def reboot_server(self):
         """Reboots given system.
@@ -283,46 +313,38 @@ def parse_args():
                                                  "perform management operations on "
                                                  "iDRAC or SUPERMICRO machine.",
                                                  formatter_class=CustomFormatter,
-                                                 epilog="Note: Tool will not perform reboot by default it is user\n"
-                                                        "decision if operation performed requires it.\n\n"
+                                                 epilog="Note: Tool will not perform reboot by default. It is user "
+                                                        "decision if operation performed requires it.\n"
+                                                        "Get value operation ex. '--tpm get' allows only single"
+                                                        "option to be taken via single call (--tpm get --sb get will not work).\n\n"
                                                         "Examples:\n"
-                                                        "> %(prog)s.py sb on -u "
+                                                        "> %(prog)s.py --sb on -u "
                                                         "calvin -p rootpass --ip 10.22.22.139 -r\n\n"
-                                                        "> %(prog)s.py tpm get -u "
+                                                        "> %(prog)s.py --tpm get -u "
                                                         "calvin -p rootpass --ip 10.22.22.139\n\n"
-                                                        "> %(prog)s.py tpm off -u "
+                                                        "> %(prog)s.py --tpm off --sb off -u "
                                                         "calvin -p rootpass --ip 10.22.22.139")
-
-    parent_parser = argparse.ArgumentParser(add_help=False)
-    parent_parser.add_argument("--ip", help="MGMT IP address.", required=True)
-    parent_parser.add_argument("-u", "--user", help="MGMT username.", required=True)
-    parent_parser.add_argument("-p", "--password", help="MGMT password.", required=True)
-    parent_parser.add_argument("--proxy", help="Proxy server for traffic redirection.", required=False)
-    parent_parser.add_argument("-r", "--reboot",
-                               help="Rebot remote machine after operation performed.",
-                               required=False,
-                               action="store_true")
-    parent_parser.add_argument("-v", "--verbose",
-                               help="Extend verbosity.",
-                               required=False,
-                               action="store_true",
-                               default=False)
-
-    switch_parser = argparse.ArgumentParser(add_help=False)
-    switch_parser.add_argument("action",
-                               choices=["on", "off", "get"],
-                               help="Action to be performed with given command.")
-
-    subparsers = parser.add_subparsers(dest="command",
-                                       help="Implemented operations",
-                                       required=True)
-    subparsers.add_parser("sb",
-                          help="Secure boot configuration.",
-                          parents=[parent_parser, switch_parser])
-
-    subparsers.add_parser("tpm",
-                          help="Trusted module platform configuration.",
-                          parents=[parent_parser, switch_parser])
+    parser.add_argument("--ip", help="MGMT IP address.", required=True)
+    parser.add_argument("-u", "--user", help="MGMT username.", required=True)
+    parser.add_argument("-p", "--password", help="MGMT password.", required=True)
+    parser.add_argument("--proxy", help="Proxy server for traffic redirection.", required=False)
+    parser.add_argument("-r", "--reboot",
+                        help="Rebot remote machine after operation performed.",
+                        required=False,
+                        action="store_true")
+    parser.add_argument("-v", "--verbose",
+                        help="Extend verbosity.",
+                        required=False,
+                        action="store_true",
+                        default=False)
+    parser.add_argument("--sb",
+                        help="Secure boot configuration.",
+                        choices=["on", "off", "get"],
+                        required=False)
+    parser.add_argument("--tpm",
+                        help="Trusted module platform configuration.",
+                        choices=["on", "off", "get"],
+                        required=False)
 
     return parser.parse_args()
 
@@ -330,15 +352,28 @@ def parse_args():
 def main():
     "Main execution function"
     args = parse_args()
-    proxy = {}
-    if args.proxy:
-        proxy["http"] = args.proxy
-        proxy["https"] = args.proxy
+    if not args.tpm and not args.sb:
+        print("\n- FAIL, Incorrect parameters run: -h/--help")
+        sys.exit(1)
+
     rapi = RedfishAPI(args.ip,
                       args.user,
                       args.password,
-                      proxy=proxy,
                       verbose=args.verbose)
+
+    # try to access endpoint without proxy, if can't reach endpoint try to set proxy
+    if not rapi.check_connectivity():
+        if not args.proxy:
+            print("\n- FAIL, Redfish is inaccessible. Please ensure ip address is correct.")
+            sys.exit(1)
+        print(f"- INFO, base url {rapi.base_url} inaccessible without proxy...")
+        proxy = {}
+        proxy["http"] = args.proxy
+        proxy["https"] = args.proxy
+        rapi.proxy = proxy
+        if not rapi.check_connectivity():
+            print("\n- FAIL, Redfish is inaccessible via proxy. Please ensure address is correct.")
+            sys.exit(1)
 
     print(f"- PASS, Retrieved system id: {rapi.system_id}")
 
@@ -353,22 +388,28 @@ def main():
     #  human readable states
     hr_status = {True: "enabled", False: "disabled"}
     hr_command = {"tpm": "trusted platform module", "sb": "secure boot"}
+    for command in calls:
+        option = getattr(args, command)
+        if not option:
+            continue
 
-    current_status = calls[args.command]["get"]()
-    print(f"- PASS, Retrieved {hr_command[args.command]} status: {hr_status[current_status]}")
+        current_status = calls[command]["get"]()
+        print(f"- PASS, Retrieved {hr_command[command]} status: {hr_status[current_status]}")
 
-    if args.action == "get":
-        return sys.exit(0) if current_status else sys.exit(1)
-    elif args.action == "on":
-        if current_status:
-            print(f"- INFO, System has {hr_command[args.command]} already enabled exiting...")
-            sys.exit(0)
-        calls[args.command]["on"]()
-    elif args.action == "off":
-        if not current_status:
-            print(f"- INFO, System has {hr_command[args.command]} already disabled exiting...")
-            sys.exit(0)
-        calls[args.command]["off"]()
+        if option == "get":
+            return sys.exit(0) if current_status else sys.exit(1)
+        elif option == "on":
+            if current_status:
+                print(f"- INFO, System has {hr_command[command]} already enabled exiting...")
+                sys.exit(0)
+            calls[command]["on"]()
+        elif option == "off":
+            if not current_status:
+                print(f"- INFO, System has {hr_command[command]} already disabled exiting...")
+                sys.exit(0)
+            calls[command]["off"]()
+
+    rapi.finalize_bios_settings()
 
     if args.reboot:
         rapi.reboot_server()

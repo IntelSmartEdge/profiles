@@ -20,21 +20,22 @@ clear_status() {
 }
 
 set_status() {
+  # first clear previous status
+  clear_status
+
   local deploy_status=$1
   for f in "${issue_files[@]}"; do
     echo -e "\nSmart Edge Open Deployment Status: ${deploy_status}\n" >> "${f}"
   done
 }
 
-pushd "${ek_dir}"
-
-clear_status
-
+# if user has intentionally restarted a previously successful deployment,
+# remove marker for clarity
 if [ -f "${marker_filename}" ]; then
-  echo "SE already deployed (marker file detected)"
-  set_status "deployed"
-  exit 0
+  rm "${marker_filename}"
 fi
+
+pushd "${ek_dir}"
 
 # get the IP and insert it into inventory
 IP=$(ip route get 8.8.8.8 | awk '{print $7}')
@@ -45,18 +46,19 @@ export NO_PROXY="$NO_PROXY,$IP"
 export no_proxy="$NO_PROXY"
 
 set_status "in progress"
-/root/.local/bin/pipenv install
 
 set +e
-/root/.local/bin/pipenv run ./deploy.py
+./deploy.sh
 status=$?
 set -e
 
-clear_status
 if [ $status -eq 0 ]; then
-  echo "SE deployed successfuly - creating marker"
+  echo "SE deployed successfuly"
   set_status "deployed"
+  # put marker for clarity
   touch "${marker_filename}"
+  # no need to run deploy ever again
+  systemctl disable seo
 else
   set_status "failed. Check logs in ${ek_dir}/logs. To restart deployment run: systemctl restart seo"
 fi

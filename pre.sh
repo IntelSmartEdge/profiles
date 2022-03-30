@@ -307,6 +307,27 @@ if [ -n "${param_docker_login_user}" ] && [ -n "${param_docker_login_pass}" ]; t
         "${PROVISION_LOG}"
 fi
 
+
+# shellcheck source=./files/seo/provision_settings
+source <(wget --header "Authorization: token ${param_token}" -O- "${param_bootstrapurl}/files/seo/provision_settings")
+
+# try to find mac specific file for node
+for mac in $(ip a | grep ether | awk '{print $2}')
+do
+    if wget --header "Authorization: token ${param_token}" -S --spider "${param_bootstrapurl}/files/seo/provision_settings_${mac}" 2>&1 | grep -q 'HTTP/1.1 200 OK'; then
+        wget --header "Authorization: token ${param_token}" "${param_bootstrapurl}/files/seo/provision_settings_${mac}"
+        NODE_SETTINGS="$(pwd)/provision_settings_${mac}"
+        # overrides redfish variable taken from provision_settings 
+        # shellcheck source=./files/seo/provision_settings_mac
+        source "${NODE_SETTINGS}"
+
+        run "Found NODE_SETTINGS file for machine mac: ${mac}" \
+            "echo NODE_SETTINGS; cat ${NODE_SETTINGS}" \
+            "${PROVISION_LOG}"
+        break
+    fi
+done
+
 # --- Begin Ubuntu Install Process ---
 run "Preparing Ubuntu ${param_ubuntuversion} installer" \
     "docker pull ubuntu:${param_ubuntuversion}" \
@@ -353,7 +374,15 @@ if [[ $param_parttype == 'efi' ]]; then
         wget --header \"Authorization: token ${param_token}\" -O - ${param_bootstrapurl}/files/etc/fstab | sed -e \"s#ROOT#UUID=${rootfs_partuuid}#g\" | sed -e \"s#BOOT#UUID=${bootfs_partuuid}                 /boot/efi       vfat    umask=0077        0       1#g\" > $ROOTFS/etc/fstab" \
         "${PROVISION_LOG}"
 
-    EFI_BOOT_NAME="Ubuntu OS"
+    EFI_BOOT_NAME="Ubuntu ESP"
+
+    # clear all previous ESP boot entries (leftovers from previous ESP provisioning, entries named either 'Ubuntu ESP' or 'Centos ESP')
+    lines=$(efibootmgr | sed '/^Timeout:\|^BootCurrent:\|^BootOrder:\|^Mirror/d' | grep " ESP" | awk '{print $1}' | sed 's/^Boot//g' | sed 's/\*$//g')
+    for bootnum in $lines; do
+        run "Clearing previous EFI boot entry ${bootnum}" "efibootmgr -b ${bootnum} -B" "${PROVISION_LOG}"
+    done
+
+    # add EFI boot manager entry, that will jump to grub boot manager, located on boot partition
     run "EFI Boot Manager" \
         "efibootmgr -c -d ${DRIVE} -p 1 -L \"${EFI_BOOT_NAME}\" -l '\\EFI\\ubuntu\\grubx64.efi'" \
         "${PROVISION_LOG}"
@@ -398,8 +427,16 @@ else
     export MOUNT_DURING_INSTALL="chmod a+rw /dev/null /dev/zero && mount ${BOOT_PARTITION} /boot"
 fi
 
+# shellcheck disable=SC2269 # variable origin: provision_settings_mac
+node_hostname=${node_hostname}
+
+if [ -z "${node_hostname}" ]; then
+    HOSTNAME="ubuntu-$(tr </dev/urandom -dc a-f0-9 | head -c10)"
+else
+    HOSTNAME="${node_hostname}"
+fi
+
 # --- Enabling Ubuntu boostrap items ---
-HOSTNAME="ubuntu-$(tr </dev/urandom -dc a-f0-9 | head -c10)"
 run "Enabling Ubuntu boostrap items" \
     "wget --header \"Authorization: token ${param_token}\" -O $ROOTFS/etc/systemd/system/show-ip.service ${param_bootstrapurl}/systemd/show-ip.service && \
     mkdir -p $ROOTFS/etc/systemd/system/network-online.target.wants/ && \

@@ -11,4 +11,3 @@
 ROOT                 /               ext4    errors=remount-ro 0       1
 # /boot was on /dev/vda1 during installation
 BOOT
-SWAP                 none            swap    sw              0       0

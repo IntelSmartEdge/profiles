@@ -29,10 +29,10 @@ fi
 # shellcheck disable=SC2269 # variable origin: provision_settings
 ek_path=${ek_path}
 # shellcheck disable=SC2269 # variable origin: provision_settings
-flavor=${flavor}
+deployment=${deployment}
 
 # Get inventory for single node
 wget --header "Authorization: token ${param_token}" -O "${ek_path}/inventory.yml.tpl2" "${param_bootstrapurl}/files/seo/inventories/single_node.yml"
 # shellcheck disable=SC2016 # envsubst needs the environment variables unexpanded
-envsubst '$flavor $param_username' < "${ek_path}/inventory.yml.tpl2" > "${ek_path}/inventory.yml.tpl"
+envsubst '$deployment $param_username' < "${ek_path}/inventory.yml.tpl2" > "${ek_path}/inventory.yml.tpl"
 rm -rf "${ek_path}/inventory.yml.tpl2"

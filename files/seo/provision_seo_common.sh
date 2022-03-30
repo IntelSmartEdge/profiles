@@ -31,6 +31,7 @@ fi
 # (re)load settings - bash's associative arrays cannot be exported
 # shellcheck source=./files/seo/provision_settings
 source <(wget --header "Authorization: token ${param_token}" -O- "${param_bootstrapurl}/files/seo/provision_settings")
+
 # shellcheck disable=SC2269 # variable origin: provision_settings
 ek_path=${ek_path}
 # shellcheck disable=SC2269 # variable origin: provision_settings
@@ -58,26 +59,8 @@ if [ -n "${gh_token}" ]; then
 fi
 cd "${ek_path}"
 
-# shellcheck disable=SC2154
-for remote_filename in "${!files[@]}"; do
-    dest_path=${files[$remote_filename]}
-    if [[ "${dest_path}" == */ ]]; then
-        # dest_path ends with / - filename will be added to the path
-        dest_path="${dest_path}${remote_filename}"
-    fi
-
-    dest_dir=$(dirname "${dest_path}")
-    mkdir -p "${dest_dir}"
-
-    # if starts with / then path is absolute
-    if [[ "${dest_path:0:1}" == '/' ]]; then
-        echo "${remote_filename} will be copied to ${dest_path}"
-    else
-        echo "${remote_filename} will be copied to ${ek_path}/${dest_path}"
-    fi
-
-    wget --header "Authorization: token ${param_token}" -O "${dest_path}" "${param_bootstrapurl}/files/seo/sideload/${remote_filename}"
-done
+# shellcheck disable=SC1090 
+source <(wget --header "Authorization: token ${param_token}" -O- "${param_bootstrapurl}/files/seo/download_sideload_files.sh")
 
 # Install Python packages
 make install-dependencies

@@ -14,8 +14,6 @@ PROVISIONER=$1
 param_bootstrapurl=${param_bootstrapurl}
 # shellcheck disable=SC2269 # variable origin: pre.sh
 param_token=${param_token}
-# shellcheck source=./files/seo/provision_settings
-source <(wget --header "Authorization: token ${param_token}" -O- "${param_bootstrapurl}/files/seo/provision_settings")
 # shellcheck disable=SC2269 # variable origin: provision_settings
 enable_secure_boot=${enable_secure_boot}
 # shellcheck disable=SC2269 # variable origin: provision_settings
@@ -31,17 +29,19 @@ param_parttype=${param_parttype}
 # A proxy that has access to out of band management interface
 management_proxy="http://${PROVISIONER}:3128/"
 
+redfish_actions=""
 if [[ "${enable_secure_boot}" == "true" ]] && [[ $param_parttype == "efi" ]]; then
-    run "Enabling secure boot" \
-    "wget --header \"Authorization: token ${param_token}\" -O - \"${param_bootstrapurl}/redfish.py\" \
-    | python3 - sb on --ip \"${redfish_ip}\" -u \"${redfish_user}\" -p \"${redfish_password}\" --proxy \"${management_proxy}\"" \
-    "${PROVISION_LOG}"
+    redfish_actions+=" --sb on"
 fi
 
 if [[ "${enable_tpm}" == "true" ]]; then
-    run "Enabling trusted module platform" \
+    redfish_actions+=" --tpm on"
+fi
+
+if [ -n "${redfish_actions}" ]; then
+    run "Calling redfish with actions ${redfish_actions}" \
     "wget --header \"Authorization: token ${param_token}\" -O - \"${param_bootstrapurl}/redfish.py\" \
-    | python3 - tpm on --ip \"${redfish_ip}\" -u \"${redfish_user}\" -p \"${redfish_password}\" --proxy \"${management_proxy}\"" \
+    | python3 - --ip \"${redfish_ip}\" -u \"${redfish_user}\" -p \"${redfish_password}\" --proxy \"${management_proxy}\" ${redfish_actions}" \
     "${PROVISION_LOG}"
 fi
 
@@ -61,7 +61,6 @@ run "Provisioning log will be available in /var/log/provisioning.log" \
 
 cp "${PROVISION_LOG}" "$ROOTFS/var/log/provisioning.log"
 
-# --- Cleanup ---
 # shellcheck disable=SC2154 # $freemem defined in pre.sh
 if [ "$freemem" -lt 6291456 ]; then
     run "Cleaning up" \

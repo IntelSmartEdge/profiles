@@ -1,0 +1,13 @@
+# SPDX-License-Identifier: Apache-2.0
+# Copyright (C) 2022 Intel Corporation
+# template bash file for provision_settings_${mac}
+ 
+# Switch for enabling secure boot in bios
+# Affects uefi boot only
+export enable_secure_boot=
+# Switch for enabling trusted module platform
+export enable_tpm=
+export redfish_ip=
+export redfish_user=
+export redfish_password=
+export node_hostname=

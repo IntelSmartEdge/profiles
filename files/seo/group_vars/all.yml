@@ -1,13 +1,2 @@
 # SPDX-License-Identifier: Apache-2.0
 # Copyright (C) 2021 Intel Corporation
-
-git_repo_token: ""
-
-proxy_env:
-  http_proxy: ""
-  https_proxy: ""
-  ftp_proxy: ""
-  no_proxy: ""
-
-ntp_enable: false
-ntp_servers: ['']

@@ -15,6 +15,8 @@ http_proxy=${http_proxy}
 param_username=${param_username}
 # shellcheck disable=SC2269 # variable origin: pre.sh
 param_bare_os=${param_bare_os}
+# shellcheck disable=SC2269 # variable origin: pre.sh
+scenario=${scenario}
 
 # this is provided while using uOS
 # shellcheck source=/dev/null
@@ -48,10 +50,21 @@ run "Installing Extra Packages on Ubuntu ${param_ubuntuversion}" \
         sed \\\"s,.*Banner.*,Banner /etc/issue.net,g\\\" -i /etc/ssh/sshd_config\"'" \
     "${PROVISION_LOG}"
 
-# shellcheck source=./files/seo/provision_settings
-source <(wget --header "Authorization: token ${param_token}" -O- "${param_bootstrapurl}/files/seo/provision_settings")
-# shellcheck disable=SC2269 # variable origin: provision_settings
-scenario=${scenario}
+
+# --- Upgrade installed packages ---
+# shellcheck disable=SC2154
+run "Upgrading packages on Ubuntu ${param_ubuntuversion}" \
+    "docker run -i --rm --privileged --name ubuntu-installer ${DOCKER_PROXY_ENV} -v /dev:/dev -v /sys/:/sys/ -v $ROOTFS:/target/root ubuntu:${param_ubuntuversion} sh -c \
+    'mount --bind dev /target/root/dev && \
+    mount -t proc proc /target/root/proc && \
+    mount -t sysfs sysfs /target/root/sys && \
+    LANG=C.UTF-8 chroot /target/root sh -c \
+    \"${INLINE_PROXY//\'/\\\"} export TERM=xterm-color && \
+        export DEBIAN_FRONTEND=noninteractive && \
+        apt update && \
+        apt upgrade -y \"'" \
+    "${PROVISION_LOG}"
+
 
 primary_interface=$(ip route get 8.8.8.8 | head -n1 | awk '{print $5}')
 primary_interface_mac=$(cat "/sys/class/net/${primary_interface}/address")
