@@ -49,14 +49,29 @@ rm -rf /tmp/seo.service.tpl /tmp/seo_deploy.sh.tpl
 systemctl enable seo
 
 # Clone Experience Kit
+IFS="/" read -r -a url_split <<< "$url"
+
+if [ -n "${git_user}" ] && [ -n "${git_password}" ]; then
+    credentials="${git_user}:${git_password}"
+else
+    credentials="${git_user}${git_password}"
+fi
+
 rm -rf "${ek_path}"
-if [ -n "${gh_token}" ]; then
-    git config --global url."https://${gh_token}@github.com".insteadOf https://github.com
+if [ -n "${credentials}" ]; then
+    git config --global url."${url_split[0]}//${credentials}@".insteadOf "${url_split[0]}//"
 fi
-git clone --branch "${branch}" --recursive "https://${url}" "${ek_path}"
-if [ -n "${gh_token}" ]; then
-    git config --global --remove-section url."https://${gh_token}@github.com"
+
+if ! (git clone --branch "${branch}" --recursive "${url}" "${ek_path}") then
+    # Workaround for no_proxy issue.
+    export no_proxy="${no_proxy},${url_split[2]}"
+    git clone --branch "${branch}" --recursive "${url}" "${ek_path}"
 fi
+
+if [ -n "${credentials}" ]; then
+    git config --global --remove-section url."${url_split[0]}//${credentials}@"
+fi
+
 cd "${ek_path}"
 
 # shellcheck disable=SC1090 
