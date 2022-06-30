@@ -186,7 +186,9 @@ if [[ $kernel_params == *"password="* ]]; then
     tmp="${kernel_params##*password=}"
     export param_password="${tmp%% *}"
 else
-    export param_password="password"
+    msg="The password was not set"
+
+    run "${msg}" "echo ${msg} - This is not supported; false" "${PROVISION_LOG}"
 fi
 
 if [[ $kernel_params == *"bare_os="* ]]; then

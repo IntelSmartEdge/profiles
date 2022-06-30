@@ -105,10 +105,12 @@ class RedfishAPI:
 
     @property
     def is_supermicro(self) -> bool:
+        """Returns True if BMC seems to be Supermicro"""
         return self.system_id == "1"
 
     @property
     def is_dell(self) -> bool:
+        """Returns True if BMC seems to be Dell"""
         return self.system_id == "System.Embedded.1"
 
     def check_connectivity(self):
@@ -309,21 +311,25 @@ def parse_args():
     """Parse argument passed in stdin"""
     class CustomFormatter(argparse.ArgumentDefaultsHelpFormatter, argparse.RawDescriptionHelpFormatter):
         "Default parsers except help"
+
+
+    epilog = ("Note: Tool will not perform reboot by default. It is user "
+    "decision if operation performed requires it.\n"
+    "Get value operation ex. '--tpm get' allows only single"
+    "option to be taken via single call (--tpm get --sb get will not work).\n\n"
+    "Examples:\n"
+    "> %(prog)s.py --sb on -u "
+    "calvin -p rootpass --ip 10.22.22.139 -r\n\n"
+    "> %(prog)s.py --tpm get -u "
+    "calvin -p rootpass --ip 10.22.22.139\n\n"
+    "> %(prog)s.py --tpm off --sb off -u "
+    "calvin -p rootpass --ip 10.22.22.139")
+
     parser = argparse.ArgumentParser(description="This script utilizes Redfish API to "
                                                  "perform management operations on "
                                                  "iDRAC or SUPERMICRO machine.",
                                                  formatter_class=CustomFormatter,
-                                                 epilog="Note: Tool will not perform reboot by default. It is user "
-                                                        "decision if operation performed requires it.\n"
-                                                        "Get value operation ex. '--tpm get' allows only single"
-                                                        "option to be taken via single call (--tpm get --sb get will not work).\n\n"
-                                                        "Examples:\n"
-                                                        "> %(prog)s.py --sb on -u "
-                                                        "calvin -p rootpass --ip 10.22.22.139 -r\n\n"
-                                                        "> %(prog)s.py --tpm get -u "
-                                                        "calvin -p rootpass --ip 10.22.22.139\n\n"
-                                                        "> %(prog)s.py --tpm off --sb off -u "
-                                                        "calvin -p rootpass --ip 10.22.22.139")
+                                                 epilog=epilog)
     parser.add_argument("--ip", help="MGMT IP address.", required=True)
     parser.add_argument("-u", "--user", help="MGMT username.", required=True)
     parser.add_argument("-p", "--password", help="MGMT password.", required=True)
@@ -388,26 +394,27 @@ def main():
     #  human readable states
     hr_status = {True: "enabled", False: "disabled"}
     hr_command = {"tpm": "trusted platform module", "sb": "secure boot"}
-    for command in calls:
-        option = getattr(args, command)
+
+    for name, functions in calls.items():
+        option = getattr(args, name)
         if not option:
             continue
 
-        current_status = calls[command]["get"]()
-        print(f"- PASS, Retrieved {hr_command[command]} status: {hr_status[current_status]}")
+        current_status = functions["get"]()
+        print(f"- PASS, Retrieved {hr_command[name]} status: {hr_status[current_status]}")
 
         if option == "get":
             return sys.exit(0) if current_status else sys.exit(1)
         elif option == "on":
             if current_status:
-                print(f"- INFO, System has {hr_command[command]} already enabled exiting...")
+                print(f"- INFO, System has {hr_command[name]} already enabled exiting...")
                 sys.exit(0)
-            calls[command]["on"]()
+            functions["on"]()
         elif option == "off":
             if not current_status:
-                print(f"- INFO, System has {hr_command[command]} already disabled exiting...")
+                print(f"- INFO, System has {hr_command[name]} already disabled exiting...")
                 sys.exit(0)
-            calls[command]["off"]()
+            functions["off"]()
 
     rapi.finalize_bios_settings()
 
